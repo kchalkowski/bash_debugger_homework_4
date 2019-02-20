@@ -1,0 +1,53 @@
+#!/usr/bin/bash
+
+
+#######################
+###-----PREAMBLE-----##
+#######################
+
+#bashdb preample
+#This file gets prepended to the shell script being debugged
+#Arguments:
+# $1= the name of the original guinea pi script
+# $2= the directory where temporary files are stored
+# $3= the directory where bashdb.pre and bashdb.fns are stored
+
+#Save the three fixed arguments in variables and shift them out of the way, so that the positional parameters (if any)
+#are those that the user supplied on the command line as arguments to the guinea pig. 
+_debugfile=$0
+_guineapig=$1
+_tmpdir=$2
+_libdir_=$3
+
+shift 3
+
+#Then, the preamble reads in another file, bashdb.fns, which contains all the functions necessary for the operation of the debugger itself
+#We put this code in a separate file to minimize the size of the temporary file.
+source $_libdir/bashdb.fns
+_linebp=
+let _trace=0
+let _i=1
+
+#Then reads the original guinea pig script into an array of lines
+#use $REPLY because it preserves leading whitespace in the lines, ie indentation and layout of original script
+while read; do
+    _lines[$_i]=$REPLY
+    let _i=$_i+1
+done < $_guineapig
+
+#This line sets up the routine _steptrap to run when the fake signal  DEBUG occurs
+#trap command sets up a clean up routine that runs when the fake signal EXIT occurs
+trap _cleanup EXIT
+
+#Next line sets the variable _steps to 1 so that when the ebugger is first entered, it will stop after the first line
+let _steps=1
+
+#This line sets up the routine _steptrap to run when the fake signal DEBUG occurs
+#The built in variable LINENO is used to provide line numbers in the debugger...
+#However, if we just used it as is, we'd get line numbers above 30 because LINENO would be including the lines in the preamble...
+#To get around this, can pass LINENO minus the number of lines in the preamble to the trap
+trap '_steptrap $(( $LINENO -29 ))' DEBUG
+
+
+
+
